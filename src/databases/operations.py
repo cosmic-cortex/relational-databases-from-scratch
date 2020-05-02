@@ -91,6 +91,9 @@ def theta_join(left: Table, right: Table, conditions: List[Callable]) -> Table:
         conditions: List[Callable], list of conditions to join on. Each condition
             should be a function mapping a tuple of a row from left and right to a Boolean.
             Example: lambda (x, y): x['id'] == y['employee_id']
+
+    Returns:
+        joined_table: Table, theta_join of left and right along the conditions.
     """
     # row prefixer function for
     row_prefixer = lambda row, prefix: {f"{prefix}.{key}": value for key, value in row.items()}
@@ -105,42 +108,21 @@ def theta_join(left: Table, right: Table, conditions: List[Callable]) -> Table:
     return joined_table
 
 
-def natural_join(**tables) -> Table:
+def natural_join(left: Table, right: Table) -> Table:
     """
-    Creates the natural join of the input tables. The natural join is the cross-product of the tables,
-    filtered for records where mutual columns match.
+    Natural join of the left and right tables. It is the same as a theta join with
+    the condition that matching columns should be equal.
 
     Args:
-        **tables: Tables to be joined
+         left: Table.
+         right: Table.
 
     Returns:
-         table_out: Table, natural join of tables
+        joined_table: Table, natural join of left and right.
     """
-
-    columns_dict = {table_name: columns_in_table(table) for table_name, table in tables.items()}
-    matching_columns = set.intersection(*list(columns_dict.values()))
-    cross_product_table = cross_product(**tables)
-
-    # filtering records where mutual columns are not equal
-    table_names = list(tables.keys())
-    columns_to_match = [
-        (f"{name_1}.{column}", f"{name_2}.{column}")
-        for name_1, name_2, column in product(table_names, table_names, matching_columns)
-        if name_1 < name_2
-    ]
-    conditions = [
-        lambda record: record[col_1] == record[col_2] for col_1, col_2 in columns_to_match
-    ]
-    table_out = select(cross_product_table, conditions)
-
-    # removing duplicate columns by projection
-    duplicate_columns = {
-        f"{table_name}.{column}": column
-        for table_name, column in product(table_names, matching_columns)
-    }
-    table_out = rename(table_out, duplicate_columns)
-
-    return table_out
+    common_cols = columns_in_table(left).intersection(columns_in_table(right))
+    conditions = [lambda x, y: x[col] == y[col] for col in common_cols]
+    return theta_join(left, right, conditions)
 
 
 def union(left: Table, right: Table) -> Table:
