@@ -71,12 +71,38 @@ def cross_product(**tables) -> Table:
     """
 
     # prefixing columns with table name
-    updated_tables = [rename(table, {column: f"{table_name}.{column}" for column in columns_in_table(table)})
-                      for table_name, table in tables.items()]
+    updated_tables = [
+        rename(table, {column: f"{table_name}.{column}" for column in columns_in_table(table)})
+        for table_name, table in tables.items()
+    ]
 
     # constructing the cross-product
     table_out = [dict(ChainMap(*rows)) for rows in product(*updated_tables)]
     return table_out
+
+
+def theta_join(left: Table, right: Table, conditions: List[Callable]) -> Table:
+    """
+    Joins the table according to conditions.
+
+    Args:
+        left: Table.
+        right: Table.
+        conditions: List[Callable], list of conditions to join on. Each condition
+            should be a function mapping a tuple of a row from left and right to a Boolean.
+            Example: lambda (x, y): x['id'] == y['employee_id']
+    """
+    # row prefixer function for
+    row_prefixer = lambda row, prefix: {f"{prefix}.{key}": value for key, value in row.items()}
+
+    # determining the pair of rows which satisfy the conditions
+    joined_table = [
+        {**row_prefixer(row_l, "left"), **row_prefixer(row_r, "right")}
+        for row_l, row_r in product(left, right)
+        if all([cond(row_l, row_r) for cond in conditions])
+    ]
+
+    return joined_table
 
 
 def natural_join(**tables) -> Table:
@@ -91,9 +117,7 @@ def natural_join(**tables) -> Table:
          table_out: Table, natural join of tables
     """
 
-    columns_dict = {
-        table_name: columns_in_table(table) for table_name, table in tables.items()
-    }
+    columns_dict = {table_name: columns_in_table(table) for table_name, table in tables.items()}
     matching_columns = set.intersection(*list(columns_dict.values()))
     cross_product_table = cross_product(**tables)
 
@@ -110,26 +134,29 @@ def natural_join(**tables) -> Table:
     table_out = select(cross_product_table, conditions)
 
     # removing duplicate columns by projection
-    duplicate_columns = {f"{table_name}.{column}": column
-                         for table_name, column in product(table_names, matching_columns)}
+    duplicate_columns = {
+        f"{table_name}.{column}": column
+        for table_name, column in product(table_names, matching_columns)
+    }
     table_out = rename(table_out, duplicate_columns)
 
     return table_out
 
 
-def union(*tables) -> Table:
+def union(left: Table, right: Table) -> Table:
     """
     Returns the union of the tables.
     Note: this is not the usual set-theoretic union, since duplicates are allowed.
 
     Args:
-        tables: Tables
+        left: Table.
+        right: Table.
 
     Returns:
-        table_out: Table, union of the input Tables
+        table_out: Table, union of the input Tables.
     """
 
-    return reduce(lambda x, y: x + y, tables)
+    return left + right
 
 
 def difference(left: Table, right: Table) -> Table:
@@ -137,14 +164,27 @@ def difference(left: Table, right: Table) -> Table:
     Returns the difference of the tables.
 
     Args:
-        left: Table, the table to make difference from
-        right: Table, table to make difference to
+        left: Table, the table to make difference from.
+        right: Table, table to make difference to.
 
     Returns:
-        table_out: Table, union of the input Tables
+        table_out: Table, union of the input Tables.
     """
     return [record for record in left if record not in right]
 
 
 def intersection(left: Table, right: Table) -> Table:
+    """
+    Returns the intersection of the tables.
+    Note: this does not add more expressive power to our already existing operations.
+        Intersection can be written as the repeated application of the difference
+        operator.
+
+    Args:
+        left: Table.
+        right: Table.
+
+    Returns:
+        table_out: Table, intersection of the input Tables
+    """
     return difference(left, difference(left, right))
