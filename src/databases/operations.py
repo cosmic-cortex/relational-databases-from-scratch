@@ -55,7 +55,7 @@ def rename(table: Table, columns: dict) -> Table:
         {columns.get(old_name, old_name): record[old_name] for old_name in table_columns}
         for record in table
     ]
-    return table_out
+    return _remove_duplicates(table_out)
 
 
 def cross_product(left: Table, right: Table) -> Table:
@@ -75,7 +75,7 @@ def cross_product(left: Table, right: Table) -> Table:
 
     table_out = [{**row_l, **row_r} for row_l, row_r in product(left, right)]
 
-    return table_out
+    return _remove_duplicates(table_out)
 
 
 def theta_join(left: Table, right: Table, conditions: List[Callable]) -> Table:
@@ -99,7 +99,7 @@ def theta_join(left: Table, right: Table, conditions: List[Callable]) -> Table:
         if all([cond(row_l, row_r) for cond in conditions])
     ]
 
-    return joined_table
+    return _remove_duplicates(joined_table)
 
 
 def natural_join(left: Table, right: Table) -> Table:
@@ -116,12 +116,14 @@ def natural_join(left: Table, right: Table) -> Table:
     """
     common_cols = _columns_in_table(left).intersection(_columns_in_table(right))
     conditions = [lambda x, y: x[col] == y[col] for col in common_cols]
-    return theta_join(left, right, conditions)
+    joined_table = theta_join(left, right, conditions)
+    return _remove_duplicates(joined_table)
 
 
 def _pad_table(table: Table, with_cols: List):
     padding_row = {col: None for col in with_cols}
-    return [{**row, **padding_row} for row in table]
+    padded_table = [{**row, **padding_row} for row in table]
+    return _remove_duplicates(padded_table)
 
 
 def union(left: Table, right: Table) -> Table:
@@ -143,7 +145,9 @@ def union(left: Table, right: Table) -> Table:
     left = _pad_table(left, right_cols.difference(left_cols))
     right = _pad_table(right, left_cols.difference(right_cols))
 
-    return left + right
+    table_out = left + right
+
+    return _remove_duplicates(table_out)
 
 
 def difference(left: Table, right: Table) -> Table:
@@ -157,7 +161,8 @@ def difference(left: Table, right: Table) -> Table:
     Returns:
         table_out: Table, union of the input Tables.
     """
-    return [record for record in left if record not in right]
+    table_out = [record for record in left if record not in right]
+    return _remove_duplicates(table_out)
 
 
 def intersection(left: Table, right: Table) -> Table:
@@ -174,4 +179,5 @@ def intersection(left: Table, right: Table) -> Table:
     Returns:
         table_out: Table, intersection of the input Tables
     """
-    return difference(left, difference(left, right))
+    table_out = difference(left, difference(left, right))
+    return _remove_duplicates(table_out)
