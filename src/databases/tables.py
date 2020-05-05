@@ -12,8 +12,16 @@ def make_task(id: int, employee_id: int, completed: bool):
     return {"id": id, "employee_id": employee_id, "completed": completed}
 
 
-def columns_in_table(table: Table) -> set:
+def _columns_in_table(table: Table) -> set:
     return set.union(*[set(record.keys()) for record in table])
+
+
+def _prefix_row(row: dict, prefix: str) -> dict:
+    return {f"{prefix}.{key}": value for key, value in row.items()}
+
+
+def _prefix_columns(table: Table, prefix: str) -> Table:
+    return [_prefix_row(row, prefix) for row in table]
 
 
 employees = [make_employee(0, "Michael Scott", "Regional Manager", 100000),

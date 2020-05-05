@@ -3,7 +3,7 @@ from collections import ChainMap
 from functools import reduce
 from typing import List, Callable
 
-from .tables import Table, columns_in_table
+from .tables import Table, _columns_in_table, _prefix_columns, _prefix_row
 
 
 def select(table: Table, conditions: List[Callable]) -> Table:
@@ -50,7 +50,7 @@ def rename(table: Table, columns: dict) -> Table:
     Returns:
         table_out: Table with renamed columns.
     """
-    table_columns = columns_in_table(table)
+    table_columns = _columns_in_table(table)
     table_out = [
         {columns.get(old_name, old_name): record[old_name] for old_name in table_columns}
         for record in table
@@ -58,7 +58,7 @@ def rename(table: Table, columns: dict) -> Table:
     return table_out
 
 
-def cross_product(**tables) -> Table:
+def cross_product(left: Table, right: Table) -> Table:
     """
     Constructs the cross product of tables. Each columnn name will be prefixed with
     the source table name.
@@ -69,15 +69,12 @@ def cross_product(**tables) -> Table:
     Returns:
         table_out: Table, cross-product of the tables.
     """
-
     # prefixing columns with table name
-    updated_tables = [
-        rename(table, {column: f"{table_name}.{column}" for column in columns_in_table(table)})
-        for table_name, table in tables.items()
-    ]
+    left = _prefix_columns(left, "left")
+    right = _prefix_columns(right, "right")
 
-    # constructing the cross-product
-    table_out = [dict(ChainMap(*rows)) for rows in product(*updated_tables)]
+    table_out = [{**row_l, **row_r} for row_l, row_r in product(left, right)]
+
     return table_out
 
 
@@ -95,12 +92,9 @@ def theta_join(left: Table, right: Table, conditions: List[Callable]) -> Table:
     Returns:
         joined_table: Table, theta_join of left and right along the conditions.
     """
-    # row prefixer function for
-    row_prefixer = lambda row, prefix: {f"{prefix}.{key}": value for key, value in row.items()}
-
     # determining the pair of rows which satisfy the conditions
     joined_table = [
-        {**row_prefixer(row_l, "left"), **row_prefixer(row_r, "right")}
+        {**_prefix_row(row_l, "left"), **_prefix_row(row_r, "right")}
         for row_l, row_r in product(left, right)
         if all([cond(row_l, row_r) for cond in conditions])
     ]
@@ -120,7 +114,7 @@ def natural_join(left: Table, right: Table) -> Table:
     Returns:
         joined_table: Table, natural join of left and right.
     """
-    common_cols = columns_in_table(left).intersection(columns_in_table(right))
+    common_cols = _columns_in_table(left).intersection(_columns_in_table(right))
     conditions = [lambda x, y: x[col] == y[col] for col in common_cols]
     return theta_join(left, right, conditions)
 
@@ -143,8 +137,8 @@ def union(left: Table, right: Table) -> Table:
         table_out: Table, union of the input Tables.
     """
     # padding
-    left_cols = columns_in_table(left)
-    right_cols = columns_in_table(right)
+    left_cols = _columns_in_table(left)
+    right_cols = _columns_in_table(right)
 
     left = _pad_table(left, right_cols.difference(left_cols))
     right = _pad_table(right, left_cols.difference(right_cols))
