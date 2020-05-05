@@ -125,6 +125,11 @@ def natural_join(left: Table, right: Table) -> Table:
     return theta_join(left, right, conditions)
 
 
+def _pad_table(table: Table, with_cols: List):
+    padding_row = {col: None for col in with_cols}
+    return [{**row, **padding_row} for row in table]
+
+
 def union(left: Table, right: Table) -> Table:
     """
     Returns the union of the tables.
@@ -137,6 +142,12 @@ def union(left: Table, right: Table) -> Table:
     Returns:
         table_out: Table, union of the input Tables.
     """
+    # padding
+    left_cols = columns_in_table(left)
+    right_cols = columns_in_table(right)
+
+    left = _pad_table(left, right_cols.difference(left_cols))
+    right = _pad_table(right, left_cols.difference(right_cols))
 
     return left + right
 
