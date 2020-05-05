@@ -3,10 +3,10 @@ from collections import ChainMap
 from functools import reduce
 from typing import Set, List, Callable
 
-from .tables import _columns_in_table, _prefix_columns, _prefix_row, Row
+from .tables import _columns_in_table, _prefix_columns, _prefix_record, Record
 
 
-def select(table: Set[Row], conditions: List[Callable]) -> Set[Row]:
+def select(table: Set[Record], conditions: List[Callable]) -> Set[Record]:
     """
     Selects the record in the table which satisfy the conditions.
 
@@ -22,7 +22,7 @@ def select(table: Set[Row], conditions: List[Callable]) -> Set[Row]:
     return table_out
 
 
-def project(table: Set[Row], columns: List[str]) -> Set[Row]:
+def project(table: Set[Record], columns: List[str]) -> Set[Record]:
     """
     Selects the given columns in the table.
 
@@ -33,11 +33,11 @@ def project(table: Set[Row], columns: List[str]) -> Set[Row]:
     Returns:
         table_out: Set[Row] with only the selected columns.
     """
-    table_out = {Row({column: record[column] for column in columns}) for record in table}
+    table_out = {Record({column: record[column] for column in columns}) for record in table}
     return table_out
 
 
-def rename(table: Set[Row], columns: dict) -> Set[Row]:
+def rename(table: Set[Record], columns: dict) -> Set[Record]:
     """
     Renames columns in a Set[Row].
     WARNING: rename is destructive. If the new name of a column is an existing column,
@@ -52,13 +52,13 @@ def rename(table: Set[Row], columns: dict) -> Set[Row]:
     """
     table_columns = _columns_in_table(table)
     table_out = {
-        Row({columns.get(old_name, old_name): record[old_name] for old_name in table_columns})
+        Record({columns.get(old_name, old_name): record[old_name] for old_name in table_columns})
         for record in table
     }
     return table_out
 
 
-def cross_product(left: Set[Row], right: Set[Row]) -> Set[Row]:
+def cross_product(left: Set[Record], right: Set[Record]) -> Set[Record]:
     """
     Constructs the cross product of tables. Each columnn name will be prefixed with
     the source table name.
@@ -73,12 +73,12 @@ def cross_product(left: Set[Row], right: Set[Row]) -> Set[Row]:
     left = _prefix_columns(left, "left")
     right = _prefix_columns(right, "right")
 
-    table_out = {Row({**row_l, **row_r}) for row_l, row_r in product(left, right)}
+    table_out = {Record({**row_l, **row_r}) for row_l, row_r in product(left, right)}
 
     return table_out
 
 
-def theta_join(left: Set[Row], right: Set[Row], conditions: List[Callable]) -> Set[Row]:
+def theta_join(left: Set[Record], right: Set[Record], conditions: List[Callable]) -> Set[Record]:
     """
     Joins the table according to conditions.
 
@@ -94,7 +94,7 @@ def theta_join(left: Set[Row], right: Set[Row], conditions: List[Callable]) -> S
     """
     # determining the pair of rows which satisfy the conditions
     joined_table = {
-        Row({**_prefix_row(row_l, "left"), **_prefix_row(row_r, "right")})
+        Record({**_prefix_record(row_l, "left"), **_prefix_record(row_r, "right")})
         for row_l, row_r in product(left, right)
         if all([cond(row_l, row_r) for cond in conditions])
     }
@@ -102,7 +102,7 @@ def theta_join(left: Set[Row], right: Set[Row], conditions: List[Callable]) -> S
     return joined_table
 
 
-def natural_join(left: Set[Row], right: Set[Row]) -> Set[Row]:
+def natural_join(left: Set[Record], right: Set[Record]) -> Set[Record]:
     """
     Natural join of the left and right tables. It is the same as a theta join with
     the condition that matching columns should be equal.
@@ -120,13 +120,13 @@ def natural_join(left: Set[Row], right: Set[Row]) -> Set[Row]:
     return joined_table
 
 
-def _pad_table(table: Set[Row], with_cols: List):
+def _pad_table(table: Set[Record], with_cols: List):
     padding_row = {col: None for col in with_cols}
-    padded_table = {Row({**row, **padding_row}) for row in table}
+    padded_table = {Record({**row, **padding_row}) for row in table}
     return padded_table
 
 
-def union(left: Set[Row], right: Set[Row]) -> Set[Row]:
+def union(left: Set[Record], right: Set[Record]) -> Set[Record]:
     """
     Returns the union of the tables.
     Note: this is not the usual set-theoretic union, since duplicates are allowed.
@@ -150,7 +150,7 @@ def union(left: Set[Row], right: Set[Row]) -> Set[Row]:
     return table_out
 
 
-def difference(left: Set[Row], right: Set[Row]) -> Set[Row]:
+def difference(left: Set[Record], right: Set[Record]) -> Set[Record]:
     """
     Returns the difference of the tables.
 
@@ -164,7 +164,7 @@ def difference(left: Set[Row], right: Set[Row]) -> Set[Row]:
     return left.difference(right)
 
 
-def intersection(left: Set[Row], right: Set[Row]) -> Set[Row]:
+def intersection(left: Set[Record], right: Set[Record]) -> Set[Record]:
     """
     Returns the intersection of the tables.
     Note: this does not add more expressive power to our already existing operations.
