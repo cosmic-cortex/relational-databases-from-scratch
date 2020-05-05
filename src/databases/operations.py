@@ -3,7 +3,7 @@ from collections import ChainMap
 from functools import reduce
 from typing import Set, List, Callable
 
-from .tables import _columns_in_table, _prefix_columns, _prefix_record, Record
+from .tables import _columns_in_table, _prefix_columns, _prefix_record, _pad_table, Record
 
 
 def select(table: Set[Record], conditions: List[Callable]) -> Set[Record]:
@@ -118,12 +118,6 @@ def natural_join(left: Set[Record], right: Set[Record]) -> Set[Record]:
     conditions = [lambda x, y: x[col] == y[col] for col in common_cols]
     joined_table = theta_join(left, right, conditions)
     return joined_table
-
-
-def _pad_table(table: Set[Record], with_cols: List):
-    padding_row = {col: None for col in with_cols}
-    padded_table = {Record({**row, **padding_row}) for row in table}
-    return padded_table
 
 
 def union(left: Set[Record], right: Set[Record]) -> Set[Record]:

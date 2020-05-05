@@ -22,9 +22,15 @@ def _columns_in_table(table: Set[Record]) -> set:
     return set.union(*[set(record.keys()) for record in table])
 
 
-def _prefix_record(row: dict, prefix: str) -> dict:
+def _prefix_record(row: dict, prefix: str) -> Record:
     return Record({f"{prefix}.{key}": value for key, value in row.items()})
 
 
 def _prefix_columns(table: Set[Record], prefix: str) -> Set[Record]:
     return {_prefix_record(row, prefix) for row in table}
+
+
+def _pad_table(table: Set[Record], with_cols: List):
+    padding_row = {col: None for col in with_cols}
+    padded_table = {Record({**row, **padding_row}) for row in table}
+    return padded_table
