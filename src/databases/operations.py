@@ -3,7 +3,7 @@ from collections import ChainMap
 from functools import reduce
 from typing import List, Callable
 
-from .tables import Table, _columns_in_table, _prefix_columns, _prefix_row
+from .tables import Table, _columns_in_table, _prefix_columns, _prefix_row, _remove_duplicates
 
 
 def select(table: Table, conditions: List[Callable]) -> Table:
@@ -19,7 +19,7 @@ def select(table: Table, conditions: List[Callable]) -> Table:
         table_out: Table with instances satisfying the conditions.
     """
     table_out = [record for record in table if all(cond(record) for cond in conditions)]
-    return table_out
+    return _remove_duplicates(table_out)
 
 
 def project(table: Table, columns: List[str]) -> Table:
@@ -34,7 +34,7 @@ def project(table: Table, columns: List[str]) -> Table:
         table_out: Table with only the selected columns.
     """
     table_out = [{column: record[column] for column in columns} for record in table]
-    return table_out
+    return _remove_duplicates(table_out)
 
 
 def rename(table: Table, columns: dict) -> Table:

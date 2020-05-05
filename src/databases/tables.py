@@ -24,11 +24,15 @@ def _prefix_columns(table: Table, prefix: str) -> Table:
     return [_prefix_row(row, prefix) for row in table]
 
 
+def _remove_duplicates(table: Table) -> Table:
+    return [dict(t) for t in {tuple(d.items()) for d in table}]
+
+
 employees = [make_employee(0, "Michael Scott", "Regional Manager", 100000),
              make_employee(1, "Dwight K. Schrute", "Assistant to the Regional Manager", 65000),
              make_employee(2, "Pamela Beesly", "Receptionist", 40000),
              make_employee(3, "James Halpert", "Sales", 55000),
-             make_employee(4, "Stanley Hudson", "Sales", 60000)]
+             make_employee(4, "Stanley Hudson", "Sales", 55000)]
 
 
 tasks = [make_task(0, 0, False),
