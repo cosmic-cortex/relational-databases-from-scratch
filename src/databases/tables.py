@@ -1,4 +1,4 @@
-from typing import Set
+from typing import Set, List
 
 
 class Record(dict):
@@ -16,6 +16,10 @@ def make_employee(id: int, name: str, position: str, salary: int):
 
 def make_task(id: int, employee_id: int, completed: bool):
     return Record({"id": id, "employee_id": employee_id, "completed": completed})
+
+
+def make_client(id: int, name: str, contact_id: int):
+    return Record({"id": id, "name": name, "contact_id": contact_id})
 
 
 def _columns_in_table(table: Set[Record]) -> set:
